@@ -13,6 +13,25 @@ String linha1 = "Sistema Operacional";
 String linha2 = "Versao 1.0";
 String linha3 = "Iniciando...";
 
+unsigned long tempoInicio = 0;
+bool carregamentoCompleto = false;
+bool logoMostrada = false;
+bool menuAtivo = false;
+unsigned long tempoLogo = 0;
+
+// Variáveis do menu
+int opcaoSelecionada = 0;
+const int totalOpcoes = 4;
+String opcoes[] = {"Configuracoes", "Aplicativos", "Sistema", "Sobre"};
+
+// Declaração de funções
+void digitarTitulo();
+void digitarLinha(String texto, int x, int y);
+void animarCarregamento();
+void mostrarLogo();
+void mostrarTitulo();
+void mostrarMenu();
+
 void setup() {
   Serial.begin(9600);
   
@@ -38,6 +57,33 @@ void setup() {
   digitarLinha(linha2, 10, 35);
   delay(300);
   digitarLinha(linha3, 10, 45);
+  
+  // Marca o tempo de início do carregamento
+  tempoInicio = millis();
+}
+
+void loop() {
+  if (!carregamentoCompleto) {
+    // Animação de carregamento por 5 segundos
+    if (millis() - tempoInicio < 5000) {
+      animarCarregamento();
+    } else {
+      carregamentoCompleto = true;
+      mostrarLogo();
+      tempoLogo = millis(); // Marca o tempo de início da logo
+    }
+  } else if (logoMostrada && !menuAtivo) {
+    // Mostra logo por 3 segundos, depois vai para o menu
+    if (millis() - tempoLogo > 3000) {
+      menuAtivo = true;
+      mostrarMenu();
+    }
+  } else if (menuAtivo) {
+    // Simula navegação automática no menu (apenas para demonstração)
+    delay(2000);
+    opcaoSelecionada = (opcaoSelecionada + 1) % totalOpcoes;
+    mostrarMenu();
+  }
 }
 
 void digitarTitulo() {
@@ -78,11 +124,6 @@ void digitarLinha(String texto, int x, int y) {
   }
 }
 
-void loop() {
-  // Animação de carregamento nos pontos do "Iniciando..."
-  animarCarregamento();
-}
-
 void animarCarregamento() {
   int x = 10;
   int y = 45;
@@ -92,6 +133,11 @@ void animarCarregamento() {
   String pontos[] = {".", "..", "...", ""};
   
   for (int i = 0; i < 4; i++) {
+    // Verifica se o tempo limite foi atingido
+    if (millis() - tempoInicio >= 5000) {
+      return;
+    }
+    
     // Limpa apenas a área dos pontos (depois da palavra "Iniciando")
     display.fillRect(x + baseTexto.length() * 6, y, 24, 8, SSD1306_BLACK);
     
@@ -103,4 +149,91 @@ void animarCarregamento() {
     
     delay(500); // Velocidade da animação de carregamento
   }
+}
+
+void mostrarTitulo() {
+  display.setTextSize(1);
+  int x = 35;
+  int y = 5;
+  
+  // Calcula a altura do texto para criar o fundo da linha
+  int16_t x1, y1;
+  uint16_t w, h;
+  display.getTextBounds(titulo, 0, 0, &x1, &y1, &w, &h);
+  
+  display.fillRect(0, y, SCREEN_WIDTH, h, SSD1306_WHITE);
+  display.setTextColor(SSD1306_BLACK);
+  display.setCursor(x, y);
+  display.print(titulo);
+}
+
+void mostrarLogo() {
+  if (!logoMostrada) {
+    display.clearDisplay();
+    
+    // Mantém o título no topo
+    mostrarTitulo();
+    
+    // Desenha um logo simples (círculo com "D" no centro) - posição mais baixa
+    display.drawCircle(64, 32, 15, SSD1306_WHITE);
+    display.drawCircle(64, 32, 14, SSD1306_WHITE);
+    
+    // Desenha a letra "D" estilizada
+    display.setTextSize(2);
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(58, 26);
+    display.print("D");
+    
+    // Adiciona alguns elementos decorativos ao redor
+    display.drawLine(45, 32, 50, 32, SSD1306_WHITE);
+    display.drawLine(78, 32, 83, 32, SSD1306_WHITE);
+    display.drawLine(64, 14, 64, 19, SSD1306_WHITE);
+    display.drawLine(64, 45, 64, 50, SSD1306_WHITE);
+    
+    // Escreve "Bem-vindo" embaixo do logo
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    
+    // Centraliza o texto "Bem-vindo"
+    String bemVindo = "Bem-vindo";
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds(bemVindo, 0, 0, &x1, &y1, &w, &h);
+    int xBemVindo = (SCREEN_WIDTH - w) / 2;
+    
+    display.setCursor(xBemVindo, 55);
+    display.print(bemVindo);
+    
+    display.display();
+    logoMostrada = true;
+  }
+}
+
+void mostrarMenu() {
+  display.clearDisplay();
+  
+  // Mantém o título no topo
+  mostrarTitulo();
+  
+  // Desenha o menu
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  
+  for (int i = 0; i < totalOpcoes; i++) {
+    int y = 20 + (i * 10);
+    
+    // Destaca a opção selecionada
+    if (i == opcaoSelecionada) {
+      display.fillRect(5, y - 1, SCREEN_WIDTH - 10, 9, SSD1306_WHITE);
+      display.setTextColor(SSD1306_BLACK);
+      display.setCursor(8, y);
+      display.print("> " + opcoes[i]);
+      display.setTextColor(SSD1306_WHITE);
+    } else {
+      display.setCursor(8, y);
+      display.print("  " + opcoes[i]);
+    }
+  }
+  
+  display.display();
 }
