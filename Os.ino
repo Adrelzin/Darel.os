@@ -79,5 +79,28 @@ void digitarLinha(String texto, int x, int y) {
 }
 
 void loop() {
-  // Loop vazio - animação acontece apenas uma vez no setup
+  // Animação de carregamento nos pontos do "Iniciando..."
+  animarCarregamento();
+}
+
+void animarCarregamento() {
+  int x = 10;
+  int y = 45;
+  String baseTexto = "Iniciando";
+  
+  // Ciclo de pontos: ., .., ..., vazio, repete
+  String pontos[] = {".", "..", "...", ""};
+  
+  for (int i = 0; i < 4; i++) {
+    // Limpa apenas a área dos pontos (depois da palavra "Iniciando")
+    display.fillRect(x + baseTexto.length() * 6, y, 24, 8, SSD1306_BLACK);
+    
+    // Reescreve o texto com os pontos atuais
+    display.setTextColor(SSD1306_WHITE);
+    display.setCursor(x, y);
+    display.print(baseTexto + pontos[i]);
+    display.display();
+    
+    delay(500); // Velocidade da animação de carregamento
+  }
 }
