@@ -7,171 +7,319 @@
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-// Textos que serão "digitados"
-String titulo = "Darel.OS";
-String linha1 = "Sistema Operacional";
-String linha2 = "Versao 1.0";
-String linha3 = "Iniciando...";
+// Estados do sistema
+enum SistemaEstado { BOOT, LOGO, MENU_PRINCIPAL };
+SistemaEstado estadoAtual = BOOT;
 
+// Variáveis de tempo
 unsigned long tempoInicio = 0;
-bool carregamentoCompleto = false;
-bool logoMostrada = false;
+unsigned long ultimoTempoMenu = 0;
+
+// Variáveis para controle de animação
+int etapaAnimacao = 0;
+unsigned long tempoUltimaEtapa = 0;
+
+// Variáveis para animação de texto
+int charAtualTitulo = 0;
+int charAtualTexto = 0;
+int pontoAtual = 0;
+unsigned long ultimoPonto = 0;
+unsigned long ultimoChar = 0;
+
+// Menu
+const int TOTAL_OPCOES = 4;
+const String OPCOES_MENU[TOTAL_OPCOES] = {
+  "Calculadora",
+  "Relogio",
+  "Configuracoes",
+  "Sobre"
+};
+int opcaoSelecionada = 0;
 
 void setup() {
   Serial.begin(9600);
   
-  // Inicializa o display
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    Serial.println("Falha ao inicializar o display OLED!");
-    for(;;); // Loop infinito se falhar
+    Serial.println("Falha no display OLED!");
+    while(true);
   }
   
   display.clearDisplay();
-  display.display(); // Mostra tela vazia no início
-  
-  delay(1000); // Pausa inicial de 1 segundo
-  
-  // Digita o título
-  digitarTitulo();
-  
-  delay(500); // Pausa entre título e corpo
-  
-  // Digita as linhas do corpo
-  digitarLinha(linha1, 10, 25);
-  delay(300);
-  digitarLinha(linha2, 10, 35);
-  delay(300);
-  digitarLinha(linha3, 10, 45);
-  
-  // Marca o tempo de início do carregamento
-  tempoInicio = millis();
-}
-
-void digitarTitulo() {
-  display.setTextSize(1);
-  int x = 35;
-  int y = 5;
-  
-  // Calcula a altura do texto para criar o fundo da linha
-  int16_t x1, y1;
-  uint16_t w, h;
-  display.getTextBounds(titulo, 0, 0, &x1, &y1, &w, &h);
-  
-  // Cria o fundo branco para o título
-  display.fillRect(0, y, SCREEN_WIDTH, h, SSD1306_WHITE);
   display.display();
-  
-  delay(200);
-  
-  // Digita o título letra por letra
-  display.setTextColor(SSD1306_BLACK);
-  for (int i = 0; i < titulo.length(); i++) {
-    display.setCursor(x, y);
-    display.print(titulo.substring(0, i + 1));
-    display.display();
-    delay(150); // Velocidade da digitação
-  }
-}
-
-void digitarLinha(String texto, int x, int y) {
-  display.setTextColor(SSD1306_WHITE);
-  
-  // Digita o texto letra por letra
-  for (int i = 0; i < texto.length(); i++) {
-    display.setCursor(x, y);
-    display.print(texto.substring(0, i + 1));
-    display.display();
-    delay(80); // Velocidade da digitação (mais rápida que o título)
-  }
+  tempoInicio = millis();
+  tempoUltimaEtapa = millis();
 }
 
 void loop() {
-  if (!carregamentoCompleto) {
-    // Animação de carregamento por 5 segundos
-    if (millis() - tempoInicio < 5000) {
-      animarCarregamento();
+  switch(estadoAtual) {
+    case BOOT:
+      executarBoot();
+      break;
+    case LOGO:
+      executarLogo();
+      break;
+    case MENU_PRINCIPAL:
+      executarMenu();
+      break;
+  }
+}
+
+void executarBoot() {
+  unsigned long tempoDecorrido = millis() - tempoUltimaEtapa;
+  
+  switch(etapaAnimacao) {
+    case 0: // Aguarda 1 segundo inicial
+      if (tempoDecorrido >= 1000) {
+        display.clearDisplay();
+        etapaAnimacao = 1;
+        tempoUltimaEtapa = millis();
+      }
+      break;
+      
+    case 1: // Desenha fundo completo da linha do título
+      {
+        display.setTextSize(1);
+        display.setTextColor(SSD1306_WHITE);
+        
+        // Desenha fundo branco em toda a largura da tela
+        display.fillRect(0, 4, SCREEN_WIDTH, 10, SSD1306_WHITE);
+        display.display();
+        
+        etapaAnimacao = 2;
+        tempoUltimaEtapa = millis();
+        charAtualTitulo = 0; // Reset contador
+        ultimoChar = millis();
+      }
+      break;
+      
+    case 2: // Aguarda um pouco antes de digitar
+      if (tempoDecorrido >= 300) {
+        etapaAnimacao = 3;
+        tempoUltimaEtapa = millis();
+      }
+      break;
+      
+    case 3: // Digita "Darel.OS" letra por letra
+      {
+        String titulo = "Darel.OS";
+        
+        if (millis() - ultimoChar >= 150 && charAtualTitulo <= titulo.length()) {
+          // Limpa apenas a área do texto do título
+          display.fillRect(35, 5, 60, 8, SSD1306_WHITE);
+          
+          display.setTextColor(SSD1306_BLACK);
+          display.setCursor(35, 5);
+          display.print(titulo.substring(0, charAtualTitulo));
+          display.display();
+          
+          charAtualTitulo++;
+          ultimoChar = millis();
+          
+          if (charAtualTitulo > titulo.length()) {
+            etapaAnimacao = 4;
+            tempoUltimaEtapa = millis();
+            charAtualTexto = 0;
+            ultimoChar = millis();
+          }
+        }
+      }
+      break;
+      
+    case 4: // Digita "Sistema Operacional"
+      {
+        String texto = "Sistema Operacional";
+        
+        if (millis() - ultimoChar >= 80 && charAtualTexto <= texto.length()) {
+          display.setTextColor(SSD1306_WHITE);
+          display.setCursor(10, 25);
+          display.print(texto.substring(0, charAtualTexto));
+          display.display();
+          
+          charAtualTexto++;
+          ultimoChar = millis();
+          
+          if (charAtualTexto > texto.length()) {
+            etapaAnimacao = 5;
+            tempoUltimaEtapa = millis();
+            charAtualTexto = 0;
+            ultimoChar = millis();
+          }
+        }
+      }
+      break;
+      
+    case 5: // Digita "Versao 1.0"
+      {
+        String texto = "Versao 1.0";
+        
+        if (millis() - ultimoChar >= 80 && charAtualTexto <= texto.length()) {
+          display.setCursor(10, 35);
+          display.print(texto.substring(0, charAtualTexto));
+          display.display();
+          
+          charAtualTexto++;
+          ultimoChar = millis();
+          
+          if (charAtualTexto > texto.length()) {
+            etapaAnimacao = 6;
+            tempoUltimaEtapa = millis();
+            charAtualTexto = 0;
+            ultimoChar = millis();
+          }
+        }
+      }
+      break;
+      
+    case 6: // Digita "Iniciando"
+      {
+        String texto = "Iniciando";
+        
+        if (millis() - ultimoChar >= 80 && charAtualTexto <= texto.length()) {
+          display.setCursor(10, 45);
+          display.print(texto.substring(0, charAtualTexto));
+          display.display();
+          
+          charAtualTexto++;
+          ultimoChar = millis();
+          
+          if (charAtualTexto > texto.length()) {
+            etapaAnimacao = 7;
+            tempoUltimaEtapa = millis();
+          }
+        }
+      }
+      break;
+      
+    case 7: // Transição para LOGO
+      if (tempoDecorrido >= 1000) {
+        estadoAtual = LOGO;
+        etapaAnimacao = 0;
+        tempoUltimaEtapa = millis();
+        pontoAtual = 0;
+        ultimoPonto = millis();
+      }
+      break;
+  }
+}
+
+void executarLogo() {
+  unsigned long tempoDecorrido = millis() - tempoUltimaEtapa;
+  
+  switch(etapaAnimacao) {
+    case 0: // Animação dos pontos
+      {
+        if (millis() - ultimoPonto >= 500) {
+          // Limpa área dos pontos
+          display.fillRect(65, 45, 25, 10, SSD1306_BLACK);
+          display.setCursor(65, 45);
+          
+          // Mostra pontos
+          for (int i = 0; i <= pontoAtual; i++) {
+            display.print(".");
+          }
+          display.display();
+          
+          pontoAtual = (pontoAtual + 1) % 4;
+          ultimoPonto = millis();
+        }
+        
+        // Após 3 segundos, passa para logo
+        if (tempoDecorrido >= 3000) {
+          etapaAnimacao = 1;
+          tempoUltimaEtapa = millis();
+        }
+      }
+      break;
+      
+    case 1: // Mostra logo completa
+      display.clearDisplay();
+      
+      // Cabeçalho
+      display.fillRect(0, 0, SCREEN_WIDTH, 10, SSD1306_WHITE);
+      display.setTextSize(1);
+      display.setTextColor(SSD1306_BLACK);
+      display.setCursor(35, 2);
+      display.print("Darel.OS");
+      
+      // Logo central - círculo duplo
+      display.drawCircle(64, 32, 15, SSD1306_WHITE);
+      display.drawCircle(64, 32, 14, SSD1306_WHITE);
+      
+      // Letra D central
+      display.setTextSize(2);
+      display.setTextColor(SSD1306_WHITE);
+      display.setCursor(60, 25);
+      display.print("D");
+      
+      // Elementos decorativos
+      display.drawLine(45, 32, 50, 32, SSD1306_WHITE); // esquerda
+      display.drawLine(78, 32, 83, 32, SSD1306_WHITE); // direita
+      display.drawLine(64, 14, 64, 19, SSD1306_WHITE); // cima
+      display.drawLine(64, 45, 64, 50, SSD1306_WHITE); // baixo
+      
+      // Rodapé
+      display.setTextSize(1);
+      display.setTextColor(SSD1306_WHITE);
+      display.setCursor(30, 55);
+      display.print("Bem-vindo!");
+      
+      display.display();
+      
+      etapaAnimacao = 2;
+      tempoUltimaEtapa = millis();
+      break;
+      
+    case 2: // Aguarda antes do menu
+      if (tempoDecorrido >= 2000) {
+        estadoAtual = MENU_PRINCIPAL;
+        etapaAnimacao = 0;
+        ultimoTempoMenu = millis();
+        mostrarMenu();
+      }
+      break;
+  }
+}
+
+void mostrarMenu() {
+  display.clearDisplay();
+  
+  // Cabeçalho
+  display.fillRect(0, 0, SCREEN_WIDTH, 10, SSD1306_WHITE);
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_BLACK);
+  display.setCursor(35, 2);
+  display.print("Darel.OS");
+  
+  // Opções do menu
+  display.setTextSize(1);
+  for (int i = 0; i < TOTAL_OPCOES; i++) {
+    int yPos = 15 + i * 12;
+    
+    if (i == opcaoSelecionada) {
+      // Destaque da opção selecionada
+      display.fillRoundRect(5, yPos, SCREEN_WIDTH - 10, 10, 3, SSD1306_WHITE);
+      display.setTextColor(SSD1306_BLACK);
     } else {
-      carregamentoCompleto = true;
-      mostrarLogo();
-    }
-  }
-}
-
-void animarCarregamento() {
-  int x = 10;
-  int y = 45;
-  String baseTexto = "Iniciando";
-  
-  // Ciclo de pontos: ., .., ..., vazio, repete
-  String pontos[] = {".", "..", "...", ""};
-  
-  for (int i = 0; i < 4; i++) {
-    // Verifica se o tempo limite foi atingido
-    if (millis() - tempoInicio >= 5000) {
-      return;
+      display.setTextColor(SSD1306_WHITE);
     }
     
-    // Limpa apenas a área dos pontos (depois da palavra "Iniciando")
-    display.fillRect(x + baseTexto.length() * 6, y, 24, 8, SSD1306_BLACK);
-    
-    // Reescreve o texto com os pontos atuais
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(x, y);
-    display.print(baseTexto + pontos[i]);
-    display.display();
-    
-    delay(500); // Velocidade da animação de carregamento
+    display.setCursor(10, yPos + 1);
+    display.print(OPCOES_MENU[i]);
   }
+  
+  // Seta indicadora
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(SCREEN_WIDTH - 15, 16 + opcaoSelecionada * 12);
+  display.print(">");
+  
+  display.display();
 }
 
-void mostrarLogo() {
-  if (!logoMostrada) {
-    display.clearDisplay();
-    
-    // Mantém o título no topo
-    display.setTextSize(1);
-    int x = 35;
-    int y = 5;
-    
-    // Calcula a altura do texto para criar o fundo da linha
-    int16_t x1, y1;
-    uint16_t w, h;
-    display.getTextBounds(titulo, 0, 0, &x1, &y1, &w, &h);
-    
-    display.fillRect(0, y, SCREEN_WIDTH, h, SSD1306_WHITE);
-    display.setTextColor(SSD1306_BLACK);
-    display.setCursor(x, y);
-    display.print(titulo);
-    
-    // Desenha um logo simples (círculo com "D" no centro) - posição mais baixa
-    display.drawCircle(64, 32, 15, SSD1306_WHITE);
-    display.drawCircle(64, 32, 14, SSD1306_WHITE);
-    
-    // Desenha a letra "D" estilizada
-    display.setTextSize(2);
-    display.setTextColor(SSD1306_WHITE);
-    display.setCursor(60, 25);
-    display.print("D");
-    
-    // Adiciona alguns elementos decorativos ao redor
-    display.drawLine(45, 32, 50, 32, SSD1306_WHITE);
-    display.drawLine(78, 32, 83, 32, SSD1306_WHITE);
-    display.drawLine(64, 14, 64, 19, SSD1306_WHITE);
-    display.drawLine(64, 45, 64, 50, SSD1306_WHITE);
-    
-    // Escreve "Bem-vindo" embaixo do logo
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    
-    // Centraliza o texto "Bem-vindo"
-    String bemVindo = "Bem-vindo";
-    display.getTextBounds(bemVindo, 0, 0, &x1, &y1, &w, &h);
-    int xBemVindo = (SCREEN_WIDTH - w) / 2;
-    
-    display.setCursor(xBemVindo, 55);
-    display.print(bemVindo);
-    
-    display.display();
-    logoMostrada = true;
+void executarMenu() {
+  // Navegação automática para demonstração
+  if (millis() - ultimoTempoMenu >= 2000) {
+    ultimoTempoMenu = millis();
+    opcaoSelecionada = (opcaoSelecionada + 1) % TOTAL_OPCOES;
+    mostrarMenu();
   }
 }
