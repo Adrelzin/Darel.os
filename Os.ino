@@ -16,21 +16,6 @@ String linha3 = "Iniciando...";
 unsigned long tempoInicio = 0;
 bool carregamentoCompleto = false;
 bool logoMostrada = false;
-bool menuAtivo = false;
-unsigned long tempoLogo = 0;
-
-// Variáveis do menu
-int opcaoSelecionada = 0;
-const int totalOpcoes = 4;
-String opcoes[] = {"Configuracoes", "Aplicativos", "Sistema", "Sobre"};
-
-// Declaração de funções
-void digitarTitulo();
-void digitarLinha(String texto, int x, int y);
-void animarCarregamento();
-void mostrarLogo();
-void mostrarTitulo();
-void mostrarMenu();
 
 void setup() {
   Serial.begin(9600);
@@ -60,30 +45,6 @@ void setup() {
   
   // Marca o tempo de início do carregamento
   tempoInicio = millis();
-}
-
-void loop() {
-  if (!carregamentoCompleto) {
-    // Animação de carregamento por 5 segundos
-    if (millis() - tempoInicio < 5000) {
-      animarCarregamento();
-    } else {
-      carregamentoCompleto = true;
-      mostrarLogo();
-      tempoLogo = millis(); // Marca o tempo de início da logo
-    }
-  } else if (logoMostrada && !menuAtivo) {
-    // Mostra logo por 3 segundos, depois vai para o menu
-    if (millis() - tempoLogo > 3000) {
-      menuAtivo = true;
-      mostrarMenu();
-    }
-  } else if (menuAtivo) {
-    // Simula navegação automática no menu (apenas para demonstração)
-    delay(2000);
-    opcaoSelecionada = (opcaoSelecionada + 1) % totalOpcoes;
-    mostrarMenu();
-  }
 }
 
 void digitarTitulo() {
@@ -124,6 +85,18 @@ void digitarLinha(String texto, int x, int y) {
   }
 }
 
+void loop() {
+  if (!carregamentoCompleto) {
+    // Animação de carregamento por 5 segundos
+    if (millis() - tempoInicio < 5000) {
+      animarCarregamento();
+    } else {
+      carregamentoCompleto = true;
+      mostrarLogo();
+    }
+  }
+}
+
 void animarCarregamento() {
   int x = 10;
   int y = 45;
@@ -151,28 +124,24 @@ void animarCarregamento() {
   }
 }
 
-void mostrarTitulo() {
-  display.setTextSize(1);
-  int x = 35;
-  int y = 5;
-  
-  // Calcula a altura do texto para criar o fundo da linha
-  int16_t x1, y1;
-  uint16_t w, h;
-  display.getTextBounds(titulo, 0, 0, &x1, &y1, &w, &h);
-  
-  display.fillRect(0, y, SCREEN_WIDTH, h, SSD1306_WHITE);
-  display.setTextColor(SSD1306_BLACK);
-  display.setCursor(x, y);
-  display.print(titulo);
-}
-
 void mostrarLogo() {
   if (!logoMostrada) {
     display.clearDisplay();
     
     // Mantém o título no topo
-    mostrarTitulo();
+    display.setTextSize(1);
+    int x = 35;
+    int y = 5;
+    
+    // Calcula a altura do texto para criar o fundo da linha
+    int16_t x1, y1;
+    uint16_t w, h;
+    display.getTextBounds(titulo, 0, 0, &x1, &y1, &w, &h);
+    
+    display.fillRect(0, y, SCREEN_WIDTH, h, SSD1306_WHITE);
+    display.setTextColor(SSD1306_BLACK);
+    display.setCursor(x, y);
+    display.print(titulo);
     
     // Desenha um logo simples (círculo com "D" no centro) - posição mais baixa
     display.drawCircle(64, 32, 15, SSD1306_WHITE);
@@ -181,7 +150,7 @@ void mostrarLogo() {
     // Desenha a letra "D" estilizada
     display.setTextSize(2);
     display.setTextColor(SSD1306_WHITE);
-    display.setCursor(58, 26);
+    display.setCursor(60, 25);
     display.print("D");
     
     // Adiciona alguns elementos decorativos ao redor
@@ -196,8 +165,6 @@ void mostrarLogo() {
     
     // Centraliza o texto "Bem-vindo"
     String bemVindo = "Bem-vindo";
-    int16_t x1, y1;
-    uint16_t w, h;
     display.getTextBounds(bemVindo, 0, 0, &x1, &y1, &w, &h);
     int xBemVindo = (SCREEN_WIDTH - w) / 2;
     
@@ -207,33 +174,4 @@ void mostrarLogo() {
     display.display();
     logoMostrada = true;
   }
-}
-
-void mostrarMenu() {
-  display.clearDisplay();
-  
-  // Mantém o título no topo
-  mostrarTitulo();
-  
-  // Desenha o menu
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  
-  for (int i = 0; i < totalOpcoes; i++) {
-    int y = 20 + (i * 10);
-    
-    // Destaca a opção selecionada
-    if (i == opcaoSelecionada) {
-      display.fillRect(5, y - 1, SCREEN_WIDTH - 10, 9, SSD1306_WHITE);
-      display.setTextColor(SSD1306_BLACK);
-      display.setCursor(8, y);
-      display.print("> " + opcoes[i]);
-      display.setTextColor(SSD1306_WHITE);
-    } else {
-      display.setCursor(8, y);
-      display.print("  " + opcoes[i]);
-    }
-  }
-  
-  display.display();
 }
